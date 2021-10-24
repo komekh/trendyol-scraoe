@@ -3,8 +3,8 @@ package scrapers
 import (
 	"fmt"
 	"github.com/gocolly/colly"
+	"scrap/helper"
 	"scrap/models"
-	"strings"
 )
 
 type Scraper struct {
@@ -25,7 +25,7 @@ func (scraper *Scraper) CategoryScrapper() {
 
 			// Category header types
 			// 1. category-header => main category. L1
-			// 2. sub-category header -> L2
+			// 2. sub-category-header -> L2
 			// 3. L3 category does not exist class
 			categoryType := catHeaderElm.Attr("class")
 
@@ -77,54 +77,57 @@ func (scraper *Scraper) CategoryScrapper() {
 }
 
 func (scraper *Scraper) ProductScraper() {
+	product := models.Product{}
+	//products := make([]models.Product, 0)
+
 	productCollector := scraper.Collector.Clone()
 	productDetailCollector := scraper.Collector.Clone()
 
 	// Iterate all Categories
-	scraper.Collector.OnHTML("div[id=navigation-wrapper]", func(e *colly.HTMLElement) {
-
+	scraper.Collector.OnHTML(".main-nav > .tab-link", func(e *colly.HTMLElement) {
 		// Iterate subcategories
 		e.ForEach("a[href]", func(index int, e *colly.HTMLElement) {
 			link := e.Attr("href")
-			fmt.Printf("Link found: %d: %q -> %s\n", index, e.Text, link)
+			//fmt.Printf("Link found: %d: %q -> %s\n", index, e.Text, link)
 
 			//Visit products
 			productCollector.Visit(e.Request.AbsoluteURL(link))
 		})
 	})
 
-	productCollector.OnHTML(".p-card-wrppr > .p-card-chldrn-cntnr", func(e *colly.HTMLElement) {
+	// Collects Product from List
+	productCollector.OnHTML(".p-card-wrppr", func(e *colly.HTMLElement) {
+		fmt.Println("----Product Collector BEGIN-----")
+
+		product.Id = e.Attr("data-id")
+
 		e.ForEach("a[href]", func(index int, productElement *colly.HTMLElement) {
-			link := productElement.Attr("href")
+			product.Link = productElement.Attr("href")
 
-			title := e.DOM.Find(".prdct-desc-cntnr-ttl").Text()
-			name := e.DOM.Find(".prdct-desc-cntnr-name").Text()
+			product.Title = e.DOM.Find(".prdct-desc-cntnr-ttl").Text()
+			product.Name = e.DOM.Find(".prdct-desc-cntnr-name").Text()
+			product.ColorVariantCount = e.DOM.Find("span.color-variant-count").Text()
 
-			//fmt.Printf("Link found: %q -> %s\n", productElement.Text, link)
-			fmt.Printf("Title: %s, name %s: link: %s \n", title, name, link)
+			//fmt.Println("COLOR COUNT: ", product.ColorVariantCount)
 
 			// Visit product detail
-			productDetailCollector.Visit(e.Request.AbsoluteURL(link))
+			productDetailCollector.Visit(e.Request.AbsoluteURL(product.Link))
 
 		})
-		/* WORKING.... DONT DELETE
-		fmt.Println("---------- PRODUCT BEGIN ------------------")
-		title := e.DOM.Find(".prdct-desc-cntnr-ttl").Text()
-		name := e.DOM.Find(".prdct-desc-cntnr-name").Text()
-		link := e.Attr("href")
-		fmt.Printf("Title: %s, name %s: link: %s \n", title, name, link)
-		fmt.Println("---------- PRODUCT END --------------------")
+
+		fmt.Println("----Product Collector END-----")
 		fmt.Println()
-		*/
 	})
 
 	productDetailCollector.OnHTML(".product-container", func(e *colly.HTMLElement) {
 
+		fmt.Println("****Product DETAIL Collector BEGIN****")
+
 		// ************************** Product Title, Name Section Begin ***********************************
-		productHeader := e.ChildText("h1.pr-new-br")
-		productName := e.ChildText("h1.pr-new-br > span")
-		productTitle := strings.ReplaceAll(productHeader, productName, "")
-		fmt.Println("Product Title: ", productTitle, "Product Name: ", productName)
+		//productHeader := e.ChildText("h1.pr-new-br")
+		//productName := e.ChildText("h1.pr-new-br > span")
+		//productTitle := strings.ReplaceAll(productHeader, productName, "")
+		//fmt.Println("Product Title: ", productTitle, "Product Name: ", productName)
 		// ************************** Product Title, Name Section End ************************************
 
 		// ************************** Price Section **************************************************
@@ -133,45 +136,97 @@ func (scraper *Scraper) ProductScraper() {
 		// 3. discount without cart
 
 		// 1. Original Price
-		priceOriginal := e.ChildText("div.product-price-container > div.pr-bx-w > div.pr-bx-nm > span.prc-slg")
+		product.PriceOrg = e.ChildText("div.product-price-container > div.pr-bx-w > div.pr-bx-nm > span.prc-slg")
 
 		// 2. Discount in Cart
-		priceDiscount := ""
-		discountDesc := ""
-		if len(priceOriginal) == 0 {
-			priceOriginal = e.ChildText("span.prc-slg.prc-slg-w-dsc")
-			priceDiscount = e.ChildText("span.prc-dsc")
-			discountDesc = e.ChildText("div.pr-bx-pr-dsc > .pr-bx-pr-dsc")
+		product.PriceDisc = ""
+		product.PriceDiscDesc = ""
+		if len(product.PriceOrg) == 0 {
+			product.PriceOrg = e.ChildText("span.prc-slg.prc-slg-w-dsc")
+			product.PriceDisc = e.ChildText("span.prc-dsc")
+			product.PriceDiscDesc = e.ChildText("div.pr-bx-pr-dsc > .pr-bx-pr-dsc")
 		}
 
 		// 3. Discount without Cart. Original price does not change
-		discountedStamp := ""
-		priceDiscount = e.ChildText("div.pr-bx-w > div.pr-bx-nm with-org-prc > span.prc-slg")
-		discountedStamp = e.ChildText("div.discounted-stamp > span.discounted-stamp-text")
+		product.PriceDiscStamp = ""
+		product.PriceDisc = e.ChildText("div.pr-bx-w > div.pr-bx-nm with-org-prc > span.prc-slg")
+		product.PriceDiscStamp = e.ChildText("div.discounted-stamp > span.discounted-stamp-text")
 
-		fmt.Println("priceOriginal: ", priceOriginal)
-		fmt.Println("PriceDiscount: ", priceDiscount)
-		fmt.Println("DiscountDesc: ", discountDesc)
-		fmt.Println("DiscountedStamp: ", discountedStamp)
 		// ************************ Price Section End **************************************************
 
 		// ************************ Merchant Section **************************************************
 		//Nullable
-		merchant := e.ChildText("a.merchant-text")
-		fmt.Println("Merchant: ", merchant)
+		//merchant := e.ChildText("a.merchant-text")
+		//fmt.Println("Merchant: ", merchant)
 		// ************************ Merchant Section End ***********************************************
 
 		// ************************ Color Section ***********************************************
 		e.ForEach(".sp-itm", func(i int, sizeElm *colly.HTMLElement) {
-			fmt.Println("size: ", sizeElm.Text)
+			product.Sizes = append(product.Sizes, sizeElm.Text)
 		})
 		// ************************ Color Section End ***********************************************
+
+		// Get stamp image and push to images
+		stampImg := e.ChildAttr("img.product-stamp", "src")
+		if len(stampImg) != 0 {
+			img := models.Image{
+				BaseImage: false,
+				IsStamp:   true,
+				Link:      stampImg,
+			}
+			product.Images = append(product.Images, img)
+		}
+
+		// Get all images belong to product
+		productImages := e.ChildAttrs("img", "src")
+
+		// The last image is product's base image with size 1200x1800
+		baseProductImg := productImages[len(productImages)-1]
+		baseImg := models.Image{
+			BaseImage: true,
+			IsStamp:   false,
+			Link:      baseProductImg,
+		}
+		product.Images = append(product.Images, baseImg)
+
+		// remove stamp image and base product image
+		helper.Remove(productImages, stampImg)
+		helper.Remove(productImages, baseProductImg)
+
+		for _, img := range productImages {
+			pImg := models.Image{
+				BaseImage: false,
+				IsStamp:   false,
+				Link:      img,
+			}
+			product.Images = append(product.Images, pImg)
+		}
 
 		// TODO:
 		// 1. Colors
 		// 2. Image URL
 		// 3. Options
+
+		//fmt.Println("PRODUCT:  ", product.Images)
+
+		//fmt.Println("Product")
+		//fmt.Println("Title: ", product.Title, "Name: ", product.Name, "LINK: ", product.Link, "ID: ", product.Id)
+		//for i, image := range product.Images {
+		//	fmt.Println("i: ", i, "image link: ", image.Link, "isBase: ", image.BaseImage, "isStamp: ", image.IsStamp)
+		//}
+		//
+		//for i, size := range product.Sizes {
+		//	fmt.Println("i: ", i, "Size: ", size)
+		//}
+
+		fmt.Println("****Product DETAIL Collector END****")
+		//fmt.Println("****************************")
 	})
+
+	//productDetailCollector.OnHTML(".gallery-container", func(element *colly.HTMLElement) {
+	//	el := element.Attr("img[src]")
+	//	fmt.Println("EL: ", el)
+	//})
 
 	scraper.Collector.Visit("https://www.trendyol.com/")
 }

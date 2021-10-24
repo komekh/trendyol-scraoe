@@ -9,14 +9,23 @@ type Category struct {
 }
 
 type Product struct {
-	Id             int
-	CategoryId     int
-	Link           string
-	Title          string
-	Name           string
-	PriceOrg       string
-	PriceDisc      string
-	PriceDiscDesc  string
-	PriceDiscStamp string
-	Sizes          []string
+	Id                string
+	CategoryId        int
+	Link              string
+	Title             string
+	Name              string
+	PriceOrg          string
+	PriceDisc         string
+	PriceDiscDesc     string
+	PriceDiscStamp    string
+	ColorVariantCount string
+	Sizes             []string
+	Images            []Image
+	Colors            []string
+}
+
+type Image struct {
+	BaseImage bool
+	IsStamp   bool
+	Link      string
 }
