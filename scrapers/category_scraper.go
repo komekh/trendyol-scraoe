@@ -77,6 +77,7 @@ func (scraper *Scraper) CategoryScrapper() {
 }
 
 func (scraper *Scraper) ProductScraper() {
+	//FIXME: solve product model
 	product := models.Product{}
 	//products := make([]models.Product, 0)
 
@@ -106,6 +107,7 @@ func (scraper *Scraper) ProductScraper() {
 
 			product.Title = e.DOM.Find(".prdct-desc-cntnr-ttl").Text()
 			product.Name = e.DOM.Find(".prdct-desc-cntnr-name").Text()
+			// FIXME: Get variant count
 			product.ColorVariantCount = e.DOM.Find("span.color-variant-count").Text()
 
 			//fmt.Println("COLOR COUNT: ", product.ColorVariantCount)
