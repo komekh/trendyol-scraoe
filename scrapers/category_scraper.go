@@ -232,3 +232,31 @@ func (scraper *Scraper) ProductScraper() {
 
 	scraper.Collector.Visit("https://www.trendyol.com/")
 }
+
+func (scraper *Scraper) BrandScraper() {
+	fmt.Println("Hello Brand Scraper")
+
+	brands := make([]models.Brand, 0)
+	scraper.Collector.OnHTML("div.carousel", func(element *colly.HTMLElement) {
+		element.ForEach("a[href]", func(_ int, brandElm *colly.HTMLElement) {
+			brand := models.Brand{
+				Logo: brandElm.ChildAttr("img", "src"),
+				Name: brandElm.Text,
+			}
+			//brandLogo := brandElm.ChildAttr("img", "src")
+			//fmt.Println("Brand Logo: ", brandLogo)
+			//fmt.Println("Brand Name: ", brandElm.Text)
+
+			//fmt.Println("BRAND: ", brand.Name, " ", brand.Logo)
+			brands = append(brands, brand)
+		})
+	})
+
+	scraper.Collector.OnScraped(func(response *colly.Response) {
+		//fmt.Println("BRANDS: ", brands)
+		for i, brand := range brands {
+			fmt.Println("i: ", i, "Brand: ", brand.Name, brand.Logo)
+		}
+	})
+	scraper.Collector.Visit("https://www.trendyol.com/")
+}

@@ -21,7 +21,7 @@ func main() {
 	}
 
 	//scraper.CategoryScrapper()
-	scraper.ProductScraper()
-
+	//scraper.ProductScraper()
+	scraper.BrandScraper()
 	fmt.Println("Read From DB")
 }

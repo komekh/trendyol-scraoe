@@ -29,3 +29,8 @@ type Image struct {
 	IsStamp   bool
 	Link      string
 }
+
+type Brand struct {
+	Name string
+	Logo string
+}
